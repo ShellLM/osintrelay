@@ -1,0 +1,7 @@
+# Web server dependencies — in addition to requirements.txt (core agent deps)
+uvicorn[standard]>=0.30.0
+fastapi>=0.111.0
+aiofiles>=23.0.0
+pydantic>=2.0.0
+python-multipart>=0.0.9
+

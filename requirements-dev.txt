@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Development & Testing Dependencies
+pytest
+pytest-mock
+

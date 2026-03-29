@@ -1,0 +1,17 @@
+FROM python:3.14-slim
+
+WORKDIR /app
+
+# Install Python dependencies first (better build caching).
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Copy agent code (prompts, fetchers, etc.).
+COPY socialosintagent /app/socialosintagent
+
+# Create runtime dirs expected by the app.
+RUN mkdir -p /app/data /app/logs
+
+# Default command for Phase 4: run the bot as a continuous daemon.
+CMD ["python", "-m", "socialosintagent.bot"]
+

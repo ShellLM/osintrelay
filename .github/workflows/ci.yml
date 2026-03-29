@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: Run Test Suite (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-dev.txt
+          pip install -r requirements-web.txt
+
+      - name: Create required runtime directories
+        run: |
+          mkdir -p data/cache data/media data/outputs data/sessions logs
+
+      - name: Set dummy environment variables
+        run: |
+          cat >> $GITHUB_ENV << 'EOF'
+          LLM_API_KEY=ci-dummy-key
+          LLM_API_BASE_URL=https://dummy.api/v1
+          ANALYSIS_MODEL=dummy-text-model
+          IMAGE_ANALYSIS_MODEL=dummy-vision-model
+          EOF
+
+      - name: Run tests
+        run: pytest --tb=short -q tests
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-py${{ matrix.python-version }}
+          path: logs/
+          retention-days: 7
+

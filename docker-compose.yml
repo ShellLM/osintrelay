@@ -1,0 +1,15 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    env_file:
+      - .env
+    working_dir: /app
+    volumes:
+      - ./data:/app/data
+      - ./socialosintagent:/app/socialosintagent
+      - ./logs:/app/logs
+    command: ["python", "-m", "socialosintagent.bot"]
+    restart: unless-stopped
+
