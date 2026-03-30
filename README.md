@@ -261,6 +261,3 @@ When `web_server` is running, the same versioned REST API as OWASP Social OSINT 
 
 Issues and pull requests are welcome. Large interface changes should stay aligned with `spec.md` phases.
 
-## License
-
-**MIT License**
