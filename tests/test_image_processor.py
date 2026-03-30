@@ -220,3 +220,80 @@ class TestProcessSingleImage:
         proc = ImageProcessor()
         result = proc.process_single_image(src)
         assert result.url == str(src)
+
+
+# ── Parametrized mode tests (LA crash regression) ────────────────────────────
+
+class TestPreprocessImageModes:
+    """Parametrized tests across RGB, RGBA, L, LA, and P modes to prevent
+    regression of the LA-mode IndexError crash (2 bands, split()[3] OOB)."""
+
+    def _write_image(self, path, mode, size=(64, 64)):
+        """Write a minimal image in the given mode, saved as PNG."""
+        if mode == "P":
+            img = Image.new("P", size)
+            img.save(path, "PNG")
+        elif mode == "LA":
+            img = Image.new("LA", size, color=(128, 200))
+            img.save(path, "PNG")
+        elif mode == "RGBA":
+            img = Image.new("RGBA", size, color=(100, 50, 200, 128))
+            img.save(path, "PNG")
+        elif mode == "L":
+            img = Image.new("L", size, color=128)
+            img.save(path, "PNG")
+        else:
+            img = Image.new("RGB", size, color=(128, 64, 32))
+            img.save(path, "JPEG")
+        return path
+
+    @pytest.mark.parametrize("mode", ["RGB", "RGBA", "L", "LA", "P"])
+    def test_preprocess_returns_valid_output(self, tmp_path, mode):
+        """Every supported mode must preprocess without error."""
+        ext = "jpg" if mode == "RGB" else "png"
+        src = self._write_image(tmp_path / f"input_{mode}.{ext}", mode)
+        proc = ImageProcessor()
+        out = proc.preprocess_image(src)
+        assert out is not None, f"preprocess_image returned None for mode={mode}"
+        assert out.exists(), f"Output file missing for mode={mode}"
+
+    @pytest.mark.parametrize("mode", ["RGB", "RGBA", "L", "LA", "P"])
+    def test_output_is_rgb_jpeg(self, tmp_path, mode):
+        """Output must always be an RGB JPEG regardless of input mode."""
+        ext = "jpg" if mode == "RGB" else "png"
+        src = self._write_image(tmp_path / f"input_{mode}.{ext}", mode)
+        proc = ImageProcessor()
+        out = proc.preprocess_image(src)
+        with Image.open(out) as img:
+            assert img.mode == "RGB", f"Expected RGB output, got {img.mode} for input mode={mode}"
+            assert img.format == "JPEG"
+
+    def test_la_alpha_compositing_pixel_values(self, tmp_path):
+        """Verify LA mode correctly composites alpha onto white background."""
+        # Create a 1x1 LA image: luminance=0 (black), alpha=128 (semi-transparent)
+        img = Image.new("LA", (1, 1), color=(0, 128))
+        src = tmp_path / "la_semi.png"
+        img.save(src, "PNG")
+
+        proc = ImageProcessor()
+        out = proc.preprocess_image(src)
+        assert out is not None
+
+        with Image.open(out) as result:
+            pixel = result.getpixel((0, 0))
+            # Alpha-compositing black (0) at 50% onto white (255):
+            # result = 0 * (128/255) + 255 * (1 - 128/255) ≈ 127
+            assert abs(pixel[0] - 127) < 5, f"Expected ~127, got {pixel[0]}"
+
+    def test_p_with_transparency_converts(self, tmp_path):
+        """P-mode images with transparency info must convert correctly."""
+        img = Image.new("P", (10, 10))
+        img.info["transparency"] = 0
+        src = tmp_path / "p_trans.png"
+        img.save(src, "PNG")
+
+        proc = ImageProcessor()
+        out = proc.preprocess_image(src)
+        assert out is not None
+        with Image.open(out) as result:
+            assert result.mode == "RGB"

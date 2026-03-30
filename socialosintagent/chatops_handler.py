@@ -449,18 +449,13 @@ async def handle_monitor_discord(message: Message, agent: SocialOSINTAgent) -> N
 def _register_handlers(dp: Dispatcher, agent: SocialOSINTAgent) -> None:
     dp.message.register(handle_start, CommandStart())
     dp.message.register(handle_help, Command("help"))
-    dp.message.register(
-        lambda m: handle_analyze(m, agent),
-        Command("analyze"),
-    )
-    dp.message.register(
-        lambda m: handle_monitor(m, agent),
-        Command("monitor"),
-    )
-    dp.message.register(
-        lambda m: handle_monitor_discord(m, agent),
-        Command("monitor_discord"),
-    )
+    async def _analyze(m): await handle_analyze(m, agent)
+    async def _monitor(m): await handle_monitor(m, agent)
+    async def _monitor_discord(m): await handle_monitor_discord(m, agent)
+
+    dp.message.register(_analyze, Command("analyze"))
+    dp.message.register(_monitor, Command("monitor"))
+    dp.message.register(_monitor_discord, Command("monitor_discord"))
 
 
 async def main_async() -> None:

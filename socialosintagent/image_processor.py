@@ -118,6 +118,8 @@ class ImageProcessor:
                     # Paste the image on top using alpha channel as mask
                     if img_to_process.mode == 'P':
                         img_to_process = img_to_process.convert('RGBA')
+                    elif img_to_process.mode == 'LA':
+                        img_to_process = img_to_process.convert('RGBA')
                     background.paste(img_to_process, mask=img_to_process.split()[3]) # 3 is alpha
                     img_to_process = background
                 elif img_to_process.mode != "RGB":

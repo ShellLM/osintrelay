@@ -163,17 +163,33 @@ def _check_auth(credentials: Optional[HTTPBasicCredentials] = Depends(_security)
 # Dependency: shared agent components
 # ---------------------------------------------------------------------------
 
+
+def _init_app_state(application) -> None:
+    """Create singleton components on application state (once, at first use)."""
+    if hasattr(application.state, "_components_initialized"):
+        return
+    application.state.cache_manager = CacheManager(BASE_DIR, is_offline=False)
+    application.state.llm_analyzer = LLMAnalyzer(is_offline=False)
+    application.state.client_manager = ClientManager(is_offline=False)
+    application.state.session_manager = SessionManager(BASE_DIR)
+    application.state._components_initialized = True
+
+
 def _get_components():
     """
-    Builds and returns the shared agent components.
-    Called once per request where needed — components are lightweight to
-    construct since the LLM client and API clients are lazily initialised.
+    Returns the shared application-scoped singleton components.
+
+    Initialized once on first call; reused across all subsequent requests.
+    Preserves connection pools, memoized path lookups, and lazy-initialized
+    API clients to avoid per-request TLS handshake overhead (~50-150 ms).
     """
-    cache_manager = CacheManager(BASE_DIR, is_offline=False)
-    llm_analyzer = LLMAnalyzer(is_offline=False)
-    client_manager = ClientManager(is_offline=False)
-    session_manager = SessionManager(BASE_DIR)
-    return cache_manager, llm_analyzer, client_manager, session_manager
+    _init_app_state(app)
+    return (
+        app.state.cache_manager,
+        app.state.llm_analyzer,
+        app.state.client_manager,
+        app.state.session_manager,
+    )
 
 
 # ---------------------------------------------------------------------------
